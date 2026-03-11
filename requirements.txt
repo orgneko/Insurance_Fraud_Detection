@@ -1,0 +1,32 @@
+# Core ML Libraries
+numpy
+pandas
+scikit-learn
+
+# XGBoost
+xgboost
+
+# Deep Learning
+tensorflow
+keras
+
+# Data Visualization
+matplotlib
+seaborn
+plotly
+
+# Web Framework
+flask
+flask-cors
+
+# Utilities
+joblib
+imbalanced-learn
+
+# Jupyter
+jupyter
+notebook
+ipywidgets
+
+# Progress bars
+tqdm

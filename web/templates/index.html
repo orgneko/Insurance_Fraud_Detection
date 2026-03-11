@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Phát hiện Gian lận Bảo hiểm</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">🛡️</div>
+                    <div class="logo-text">
+                        <h1>Hệ Thống Phát Hiện Gian Lận Bảo Hiểm</h1>
+                        <p>Powered by AI & Machine Learning</p>
+                    </div>
+                </div>
+                <div class="header-stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="modelsCount">3</span>
+                        <span class="stat-label">AI Models</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">95%+</span>
+                        <span class="stat-label">Accuracy</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Hero Section -->
+            <section class="hero">
+                <h2 class="hero-title">Phát hiện Gian lận Bảo hiểm</h2>
+                <p class="hero-subtitle">
+                    Hệ thống sử dụng 3 thuật toán Machine Learning tiên tiến: 
+                    <span class="highlight">Random Forest</span>, 
+                    <span class="highlight">XGBoost</span>, và 
+                    <span class="highlight">ANN</span>
+                </p>
+            </section>
+
+            <!-- Form Section -->
+            <section class="form-section">
+                <div class="form-container">
+                    <h3 class="section-title">
+                        <span class="icon">📋</span>
+                        Thông tin Yêu cầu Bảo hiểm
+                    </h3>
+                    
+                    <form id="fraudDetectionForm">
+                        <!-- Personal Information -->
+                        <div class="form-group-section">
+                            <h4 class="group-title">Thông tin Cá nhân</h4>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="age">Tuổi</label>
+                                    <input type="number" id="age" name="age" min="18" max="80"  required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="income">Thu nhập (VNĐ/tháng)</label>
+                                    <input type="number" id="income" name="income" min="1000000"  required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="education">Trình độ học vấn</label>
+                                    <select id="education" name="education" required>
+                                        <option value="high_school">Trung học phổ thông</option>
+                                        <option value="bachelor">Đại học</option>
+                                        <option value="master">Thạc sĩ</option>
+                                        <option value="phd">Tiến sĩ</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="employment_status">Tình trạng việc làm</label>
+                                    <select id="employment_status" name="employment_status" required>
+                                        <option value="employed">Đang làm việc</option>
+                                        <option value="self_employed">Tự kinh doanh</option>
+                                        <option value="unemployed">Thất nghiệp</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="marital_status">Tình trạng hôn nhân</label>
+                                    <select id="marital_status" name="marital_status" required>
+                                        <option value="single">Độc thân</option>
+                                        <option value="married">Đã kết hôn</option>
+                                        <option value="divorced">Ly hôn</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="num_dependents">Số người phụ thuộc</label>
+                                    <input type="number" id="num_dependents" name="num_dependents" min="0" max="10" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="credit_score">Điểm tín dụng</label>
+                                    <input type="number" id="credit_score" name="credit_score" min="300" max="850" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Insurance Information -->
+                        <div class="form-group-section">
+                            <h4 class="group-title">Thông tin Bảo hiểm</h4>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="claim_amount">Số tiền yêu cầu bồi thường (VNĐ)</label>
+                                    <input type="number" id="claim_amount" name="claim_amount" min="100000" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="claim_type">Loại yêu cầu bồi thường</label>
+                                    <select id="claim_type" name="claim_type" required>
+                                        <option value="accident">Tai nạn</option>
+                                        <option value="theft">Trộm cắp</option>
+                                        <option value="health">Sức khỏe</option>
+                                        <option value="property">Tài sản</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="num_claims">Số lần yêu cầu bồi thường trước đó</label>
+                                    <input type="number" id="num_claims" name="num_claims" min="0" max="20" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="policy_duration">Thời gian tham gia bảo hiểm (tháng)</label>
+                                    <input type="number" id="policy_duration" name="policy_duration" min="1" max="120" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="vehicle_age">Tuổi xe (năm)</label>
+                                    <input type="number" id="vehicle_age" name="vehicle_age" min="0" max="30"  required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary" id="submitBtn">
+                                <!-- <span class="btn-icon">🔍</span> -->
+                                <span class="btn-text">Phân tích & Phát hiện Gian lận</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-container">
+                    <h3 class="section-title">
+                        <span class="icon">📊</span>
+                        Kết quả Phân tích
+                    </h3>
+
+                    <!-- Final Result -->
+                    <div class="final-result" id="finalResult">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+
+                    <!-- Model Predictions -->
+                    <div class="models-grid" id="modelsGrid">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+
+                    <!-- Analysis Details -->
+                    <div class="analysis-details" id="analysisDetails">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <!-- <div class="container">
+            <p>© 2026 Insurance Fraud Detection System | Bài tập lớn môn Trí tuệ nhân tạo</p>
+            <p class="tech-stack">
+                Built with <span class="highlight">XGBoostRandom Forest</span>, 
+                <span class="highlight">XGBoost</span>, 
+                <span class="highlight">ANN</span>, 
+                <span class="highlight">Flask</span> & 
+                <span class="highlight">TensorFlow</span>
+            </p>
+        </div> -->
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
