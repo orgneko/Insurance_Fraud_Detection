@@ -104,6 +104,26 @@ class DataPreprocessor:
                 df_encoded[col] = self.label_encoders[col].transform(df[col])
         
         return df_encoded
+
+    def _engineer_features(self, df):
+        """
+        Tạo các đặc trưng mới từ dữ liệu hiện có.
+        """
+        df_engineered = df.copy()
+
+        # Ví dụ: Tỷ lệ yêu cầu bồi thường trên thu nhập
+        df_engineered['claim_to_income_ratio'] = df_engineered['claim_amount'] / (df_engineered['income'] + 1e-6)
+
+        # Ví dụ: Tỷ lệ yêu cầu bồi thường trên số lượng yêu cầu
+        df_engineered['avg_claim_per_num_claim'] = df_engineered['claim_amount'] / (df_engineered['num_claims'] + 1e-6)
+        
+        # Ví dụ: Tuổi của người yêu cầu bồi thường nhân với thời gian duy trì hợp đồng
+        df_engineered['age_x_policy_duration'] = df_engineered['age'] * df_engineered['policy_duration']
+
+        # Ví dụ: Kiểm tra xem liệu claim_amount có quá lớn so với income không (đơn giản)
+        df_engineered['high_claim_relative_to_income'] = (df_engineered['claim_amount'] > 0.5 * df_engineered['income']).astype(int)
+
+        return df_engineered
     
     def prepare_features(self, df, fit=True):
         """
@@ -113,8 +133,8 @@ class DataPreprocessor:
             df: DataFrame
             fit: Nếu True, fit scaler mới; nếu False, dùng scaler đã fit
         """
-        # Encode categorical
-        df_encoded = self.encode_categorical_features(df, fit=fit)
+        df_engineered = self._engineer_features(df)
+        df_encoded = self.encode_categorical_features(df_engineered, fit=fit)
         
         # Tách features và target
         X = df_encoded.drop('is_fraud', axis=1)

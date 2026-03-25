@@ -1,44 +1,46 @@
 """
 Module đánh giá và so sánh hiệu suất các mô hình
 """
-
-import numpy as np
-import pandas as pd
-import joblib
-import os
-from tensorflow import keras
+import seaborn as sns
+import matplotlib.pyplot as plt
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    roc_auc_score, roc_curve, confusion_matrix, classification_report
+    roc_auc_score, roc_curve, confusion_matrix, classification_report,
+    precision_recall_curve, average_precision_score
 )
-import matplotlib.pyplot as plt
-import seaborn as sns
+from tensorflow import keras
+import os
+import joblib
+import pandas as pd
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 
 
 class ModelEvaluator:
     """Class đánh giá các mô hình"""
-    
+
     def __init__(self):
         self.models = {}
         self.predictions = {}
         self.metrics = {}
-        
+
     def load_models(self, model_dir='models'):
         """Load các models đã train"""
         print("\nLoading models...")
-        
+
         # Load XGBoost
         xgb_path = os.path.join(model_dir, 'xgboost_model.pkl')
         if os.path.exists(xgb_path):
             self.models['xgboost'] = joblib.load(xgb_path)
             print("[OK] Loaded XGBoost")
-        
+
         # Load Random Forest
         rf_path = os.path.join(model_dir, 'random_forest_model.pkl')
         if os.path.exists(rf_path):
             self.models['random_forest'] = joblib.load(rf_path)
             print("[OK] Loaded Random Forest")
-        
+
         # Load ANN
         ann_path = os.path.join(model_dir, 'ann_model.h5')
         if os.path.exists(ann_path):
@@ -48,7 +50,7 @@ class ModelEvaluator:
     def predict_all(self, X_test):
         """Dự đoán với tất cả models"""
         print("\nMaking predictions...")
-        
+
         for name, model in self.models.items():
             if name == 'ann':
                 # ANN trả về probabilities
@@ -67,15 +69,15 @@ class ModelEvaluator:
                     'y_pred_proba': y_pred_proba
                 }
             print(f"[OK] Predicted with {name.upper()}")
-    
+
     def calculate_metrics(self, y_test):
         """Tính toán các metrics cho tất cả models"""
         print("\nCalculating metrics...")
-        
+
         for name, preds in self.predictions.items():
             y_pred = preds['y_pred']
             y_pred_proba = preds['y_pred_proba']
-            
+
             self.metrics[name] = {
                 'accuracy': accuracy_score(y_test, y_pred),
                 'precision': precision_score(y_test, y_pred),
@@ -84,15 +86,15 @@ class ModelEvaluator:
                 'roc_auc': roc_auc_score(y_test, y_pred_proba),
                 'confusion_matrix': confusion_matrix(y_test, y_pred)
             }
-            
+
             print(f"[OK] Calculated metrics for {name.upper()}")
-    
+
     def print_metrics_table(self):
         """In bảng so sánh metrics"""
         print("\n" + "="*80)
         print("BANG SO SANH HIEU SUAT CAC MO HINH")
         print("="*80)
-        
+
         # Tạo DataFrame
         metrics_data = []
         for name, metrics in self.metrics.items():
@@ -104,63 +106,65 @@ class ModelEvaluator:
                 'F1-Score': f"{metrics['f1_score']*100:.2f}%",
                 'ROC-AUC': f"{metrics['roc_auc']:.4f}"
             })
-        
+
         df = pd.DataFrame(metrics_data)
         print("\n" + df.to_string(index=False))
-        
+
         # Tìm model tốt nhất
         best_model = max(self.metrics.items(), key=lambda x: x[1]['f1_score'])
-        print(f"\nMO HINH TOT NHAT: {best_model[0].upper()} (F1-Score: {best_model[1]['f1_score']*100:.2f}%)")
+        print(
+            f"\nMO HINH TOT NHAT: {best_model[0].upper()} (F1-Score: {best_model[1]['f1_score']*100:.2f}%)")
         print("="*80)
-    
+
     def plot_confusion_matrices(self, output_dir='results'):
         """Vẽ confusion matrices cho tất cả models"""
         os.makedirs(output_dir, exist_ok=True)
-        
+
         n_models = len(self.metrics)
         fig, axes = plt.subplots(1, n_models, figsize=(6*n_models, 5))
-        
+
         if n_models == 1:
             axes = [axes]
-        
+
         for idx, (name, metrics) in enumerate(self.metrics.items()):
             cm = metrics['confusion_matrix']
-            
+
             # Vẽ heatmap
             sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[idx],
-                       cbar_kws={'label': 'Count'})
-            axes[idx].set_title(f'{name.upper()}\nConfusion Matrix', 
-                               fontsize=14, fontweight='bold')
+                        cbar_kws={'label': 'Count'})
+            axes[idx].set_title(f'{name.upper()}\nConfusion Matrix',
+                                fontsize=14, fontweight='bold')
             axes[idx].set_xlabel('Predicted', fontsize=12)
             axes[idx].set_ylabel('Actual', fontsize=12)
             axes[idx].set_xticklabels(['Normal', 'Fraud'])
             axes[idx].set_yticklabels(['Normal', 'Fraud'])
-        
+
         plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, 'confusion_matrices.png'), 
-                   dpi=300, bbox_inches='tight')
-        print(f"[OK] Da luu confusion matrices tai {output_dir}/confusion_matrices.png")
+        plt.savefig(os.path.join(output_dir, 'confusion_matrices.png'),
+                    dpi=300, bbox_inches='tight')
+        print(
+            f"[OK] Da luu confusion matrices tai {output_dir}/confusion_matrices.png")
         plt.close()
-    
+
     def plot_roc_curves(self, y_test, output_dir='results'):
         """Vẽ ROC curves cho tất cả models"""
         os.makedirs(output_dir, exist_ok=True)
-        
+
         plt.figure(figsize=(10, 8))
-        
+
         colors = ['#FF6B6B', '#4ECDC4', '#45B7D1']
-        
+
         for idx, (name, preds) in enumerate(self.predictions.items()):
             y_pred_proba = preds['y_pred_proba']
             fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
             auc = self.metrics[name]['roc_auc']
-            
+
             plt.plot(fpr, tpr, color=colors[idx], lw=2,
-                    label=f'{name.upper()} (AUC = {auc:.4f})')
-        
+                     label=f'{name.upper()} (AUC = {auc:.4f})')
+
         # Đường diagonal
         plt.plot([0, 1], [0, 1], 'k--', lw=2, label='Random Classifier')
-        
+
         plt.xlim([0.0, 1.0])
         plt.ylim([0.0, 1.05])
         plt.xlabel('False Positive Rate', fontsize=12, fontweight='bold')
@@ -168,21 +172,86 @@ class ModelEvaluator:
         plt.title('ROC Curves Comparison', fontsize=14, fontweight='bold')
         plt.legend(loc="lower right", fontsize=11)
         plt.grid(alpha=0.3)
-        
+
         plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, 'roc_curves.png'), 
-                   dpi=300, bbox_inches='tight')
+        plt.savefig(os.path.join(output_dir, 'roc_curves.png'),
+                    dpi=300, bbox_inches='tight')
         print(f"[OK] Da luu ROC curves tai {output_dir}/roc_curves.png")
         plt.close()
-    
+
+    def plot_precision_recall_curves(self, y_test, output_dir='results'):
+        """Vẽ Precision-Recall curves cho tất cả models"""
+        os.makedirs(output_dir, exist_ok=True)
+
+        plt.figure(figsize=(10, 8))
+
+        colors = ['#FF6B6B', '#4ECDC4', '#45B7D1']
+
+        for idx, (name, preds) in enumerate(self.predictions.items()):
+            y_pred_proba = preds['y_pred_proba']
+            precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
+            avg_precision = average_precision_score(y_test, y_pred_proba)
+
+            plt.plot(recall, precision, color=colors[idx], lw=2,
+                     label=f'{name.upper()} (AP = {avg_precision:.4f})')
+
+        plt.xlabel('Recall', fontsize=12, fontweight='bold')
+        plt.ylabel('Precision', fontsize=12, fontweight='bold')
+        plt.title('Precision-Recall Curves Comparison',
+                  fontsize=14, fontweight='bold')
+        plt.legend(loc="lower left", fontsize=11)
+        plt.grid(alpha=0.3)
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, 'precision_recall_curves.png'),
+                    dpi=300, bbox_inches='tight')
+        print(
+            f"[OK] Da luu Precision-Recall curves tai {output_dir}/precision_recall_curves.png")
+        plt.close()
+
+    def plot_feature_importance(self, feature_names, output_dir='results', model_name='random_forest'):
+        """Vẽ biểu đồ mức độ quan trọng của đặc trưng cho mô hình Random Forest"""
+        os.makedirs(output_dir, exist_ok=True)
+
+        if model_name not in self.models:
+            print(f"[ERROR] Mo hinh '{model_name}' khong ton tai.")
+            return
+
+        model = self.models[model_name]
+
+        if not hasattr(model, 'feature_importances_'):
+            print(
+                f"[ERROR] Mo hinh '{model_name}' khong co thuoc tinh feature_importances_")
+            return
+
+        importances = model.feature_importances_
+        indices = np.argsort(importances)[::-1]
+
+        plt.figure(figsize=(12, 7))
+        sns.barplot(x=importances[indices], y=[feature_names[i]
+                    for i in indices], palette='viridis')
+        plt.title(
+            f'Feature Importance for {model_name.upper()}', fontsize=16, fontweight='bold')
+        plt.xlabel('Relative Importance', fontsize=12, fontweight='bold')
+        plt.ylabel('Feature Name', fontsize=12, fontweight='bold')
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, f'{model_name}_feature_importance.png'),
+                    dpi=300, bbox_inches='tight')
+        print(
+            f"[OK] Da luu feature importance tai {output_dir}/{model_name}_feature_importance.png")
+        plt.close()
+
     def plot_metrics_comparison(self, output_dir='results'):
         """Vẽ biểu đồ so sánh các metrics"""
         os.makedirs(output_dir, exist_ok=True)
-        
+
         # Chuẩn bị dữ liệu
-        metrics_names = ['accuracy', 'precision', 'recall', 'f1_score', 'roc_auc']
+        metrics_names = ['accuracy', 'precision',
+                         'recall', 'f1_score', 'roc_auc']
         models_names = list(self.metrics.keys())
-        
+
         data = []
         for metric in metrics_names:
             for model in models_names:
@@ -191,63 +260,66 @@ class ModelEvaluator:
                     'Model': model.upper(),
                     'Score': self.metrics[model][metric]
                 })
-        
+
         df = pd.DataFrame(data)
-        
+
         # Vẽ biểu đồ
         fig, ax = plt.subplots(figsize=(14, 6))
-        
+
         x = np.arange(len(metrics_names))
         width = 0.25
-        
+
         colors = ['#FF6B6B', '#4ECDC4', '#45B7D1']
-        
+
         for idx, model in enumerate(models_names):
             model_data = df[df['Model'] == model.upper()]
             scores = model_data['Score'].values
-            ax.bar(x + idx*width, scores, width, label=model.upper(), 
-                  color=colors[idx], alpha=0.8)
-        
+            ax.bar(x + idx*width, scores, width, label=model.upper(),
+                   color=colors[idx], alpha=0.8)
+
         ax.set_xlabel('Metrics', fontsize=12, fontweight='bold')
         ax.set_ylabel('Score', fontsize=12, fontweight='bold')
-        ax.set_title('Performance Metrics Comparison', fontsize=14, fontweight='bold')
+        ax.set_title('Performance Metrics Comparison',
+                     fontsize=14, fontweight='bold')
         ax.set_xticks(x + width)
-        ax.set_xticklabels([m.replace('_', ' ').title() for m in metrics_names])
+        ax.set_xticklabels([m.replace('_', ' ').title()
+                           for m in metrics_names])
         ax.legend()
         ax.grid(axis='y', alpha=0.3)
         ax.set_ylim([0, 1.1])
-        
+
         plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, 'metrics_comparison.png'), 
-                   dpi=300, bbox_inches='tight')
-        print(f"[OK] Da luu metrics comparison tai {output_dir}/metrics_comparison.png")
+        plt.savefig(os.path.join(output_dir, 'metrics_comparison.png'),
+                    dpi=300, bbox_inches='tight')
+        print(
+            f"[OK] Da luu metrics comparison tai {output_dir}/metrics_comparison.png")
         plt.close()
-    
+
     def save_evaluation_report(self, output_dir='results'):
         """Lưu báo cáo đánh giá chi tiết"""
         os.makedirs(output_dir, exist_ok=True)
-        
+
         report_path = os.path.join(output_dir, 'evaluation_report.txt')
-        
+
         with open(report_path, 'w', encoding='utf-8') as f:
             f.write("="*80 + "\n")
             f.write("BAO CAO DANH GIA MO HINH PHAT HIEN GIAN LAN BAO HIEM\n")
             f.write("="*80 + "\n\n")
-            
+
             for name, metrics in self.metrics.items():
                 f.write(f"\n{'='*80}\n")
                 f.write(f"MO HINH: {name.upper()}\n")
                 f.write(f"{'='*80}\n\n")
-                
+
                 f.write(f"Accuracy:  {metrics['accuracy']*100:.2f}%\n")
                 f.write(f"Precision: {metrics['precision']*100:.2f}%\n")
                 f.write(f"Recall:    {metrics['recall']*100:.2f}%\n")
                 f.write(f"F1-Score:  {metrics['f1_score']*100:.2f}%\n")
                 f.write(f"ROC-AUC:   {metrics['roc_auc']:.4f}\n\n")
-                
+
                 f.write("Confusion Matrix:\n")
                 f.write(str(metrics['confusion_matrix']) + "\n")
-        
+
         print(f"[OK] Da luu bao cao danh gia tai {report_path}")
 
 
@@ -256,36 +328,47 @@ def main():
     print("\n" + "="*80)
     print("BAT DAU DANH GIA MODELS")
     print("="*80)
-    
+
     # Load test data
     print("\nLoading test data...")
     X_test = np.load('data/X_test.npy')
     y_test = np.load('data/y_test.npy')
     print(f"[OK] Loaded test data: {X_test.shape}")
-    
+
     # Khởi tạo evaluator
     evaluator = ModelEvaluator()
-    
+
     # Load models
     evaluator.load_models()
-    
+
     # Dự đoán
     evaluator.predict_all(X_test)
-    
+
     # Tính metrics
     evaluator.calculate_metrics(y_test)
-    
+
     # In bảng metrics
     evaluator.print_metrics_table()
-    
+
     # Vẽ các biểu đồ
     evaluator.plot_confusion_matrices()
     evaluator.plot_roc_curves(y_test)
+    evaluator.plot_precision_recall_curves(y_test)  # New
     evaluator.plot_metrics_comparison()
-    
+
+    # Load preprocessor to get feature names for feature importance plotting
+    preprocessor_path = 'models/preprocessor.pkl'
+    if os.path.exists(preprocessor_path):
+        preprocessor_data = joblib.load(preprocessor_path)
+        feature_names = preprocessor_data['feature_names']
+        evaluator.plot_feature_importance(feature_names)  # New
+    else:
+        print(
+            f"[WARNING] Khong tim thay preprocessor tai {preprocessor_path}. Khong the ve bieu do muc do quan trong cua dac trung.")
+
     # Lưu báo cáo
     evaluator.save_evaluation_report()
-    
+
     print("\n" + "="*80)
     print("HOAN THANH DANH GIA!")
     print("="*80)

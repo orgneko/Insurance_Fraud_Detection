@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             const result = await response.json();
+            console.log("DEBUG RESULT:", result);
 
             if (result.success) {
                 displayResults(result);
@@ -75,7 +76,7 @@ function setLoadingState(isLoading) {
         submitBtn.classList.remove('loading');
         submitBtn.disabled = false;
         btnText.textContent = 'Phân tích & Phát hiện Gian lận';
-        submitBtn.querySelector('.btn-icon').textContent = '🔍';
+        submitBtn.querySelector('.btn-icon').textContent = '';
     }
 }
 
@@ -134,7 +135,25 @@ function displayResults(result) {
         `;
         modelsGrid.appendChild(modelCard);
     }
-
+    // 🔥 PHẦN QUAN TRỌNG: HIỂN THỊ LÝ DO
+    let reasonsHTML = '';
+   if (result.reasons && result.reasons.length > 0) {
+    reasonsHTML = `
+        <div class="detail-item">
+            <span class="detail-label">Lý do nghi ngờ:</span>
+            <ul style="margin-top:5px;">
+                ${result.reasons.map(r => `<li>${r}</li>`).join('')}
+            </ul>
+        </div>
+    `;
+} else {
+    reasonsHTML = `
+        <div class="detail-item">
+            <span class="detail-label">Lý do:</span>
+            <span class="detail-value">Không phát hiện dấu hiệu bất thường</span>
+        </div>
+    `;
+}
     // Display analysis details
     analysisDetails.innerHTML = `
         <div class="detail-item">
