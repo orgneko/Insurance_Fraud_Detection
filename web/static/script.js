@@ -1,4 +1,5 @@
 // Main JavaScript for Insurance Fraud Detection System
+// Giữ nguyên toàn bộ logic cũ, chỉ thêm validation và cải tiến UX
 
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('fraudDetectionForm');
@@ -8,9 +9,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // Load models info
     loadModelsInfo();
 
-    // Form submission
+    // Thêm validation real-time
+    setupValidation();
+
+    // Form submission - giữ nguyên logic gốc, thêm validation trước khi gửi
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
+
+        // Validate form trước khi gửi
+        if (!validateForm()) {
+            return;
+        }
 
         // Show loading state
         setLoadingState(true);
@@ -63,20 +72,22 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
+// ===== CÁC HÀM GỐC (GIỮ NGUYÊN) =====
 function setLoadingState(isLoading) {
     const submitBtn = document.getElementById('submitBtn');
     const btnText = submitBtn.querySelector('.btn-text');
+    const btnIcon = submitBtn.querySelector('.btn-icon');
 
     if (isLoading) {
         submitBtn.classList.add('loading');
         submitBtn.disabled = true;
         btnText.textContent = 'Đang phân tích...';
-        submitBtn.querySelector('.btn-icon').innerHTML = '<span class="spinner"></span>';
+        if (btnIcon) btnIcon.style.display = 'none';
     } else {
         submitBtn.classList.remove('loading');
         submitBtn.disabled = false;
         btnText.textContent = 'Phân tích & Phát hiện Gian lận';
-        submitBtn.querySelector('.btn-icon').textContent = '';
+        if (btnIcon) btnIcon.style.display = 'inline-flex';
     }
 }
 
@@ -133,15 +144,25 @@ function displayResults(result) {
                 <div class="confidence-fill" style="width: ${modelProb}%"></div>
             </div>
         `;
+        modelCard.style.cursor = "pointer";
+
+       const currentModel = modelKey;
+        modelCard.addEventListener('click', () => {
+            console.log("CLICK:", currentModel);
+            console.log("SHAP:", result.shap[currentModel]);
+            showModelExplain(currentModel, result.shap);
+        });
+
         modelsGrid.appendChild(modelCard);
     }
+    
     // 🔥 PHẦN QUAN TRỌNG: HIỂN THỊ LÝ DO
     let reasonsHTML = '';
    if (result.reasons && result.reasons.length > 0) {
     reasonsHTML = `
         <div class="detail-item">
             <span class="detail-label">Lý do nghi ngờ:</span>
-            <ul style="margin-top:5px;">
+            <ul class="reason-list">
                 ${result.reasons.map(r => `<li>${r}</li>`).join('')}
             </ul>
         </div>
@@ -170,6 +191,7 @@ function displayResults(result) {
                 ${isFraud ? 'CẦN KIỂM TRA KỸ' : 'CÓ THỂ CHẤP NHẬN'}
             </span>
         </div>
+        ${reasonsHTML}  
     `;
 
     // Animate confidence bars
@@ -193,6 +215,94 @@ async function loadModelsInfo() {
     }
 }
 
+function showModelExplain(modelName, shapData) {
+    const data = shapData[modelName];
+
+    if (!data || data.length === 0) {
+        showPopup(`
+            <div class="shap-container">
+                <h3>⚠️ ${modelName.toUpperCase()}</h3>
+                <p>Model này chưa hỗ trợ giải thích (SHAP)</p>
+            </div>
+        `);
+        return;
+    }
+
+    // Map tên tiếng Việt
+    const featureMap = {
+        claim_amount: "Số tiền yêu cầu",
+        claim_to_income_ratio: "Tỷ lệ yêu cầu / thu nhập",
+        credit_score: "Điểm tín dụng",
+        income: "Thu nhập",
+        policy_duration: "Thời gian tham gia bảo hiểm"
+    };
+
+    // Sắp xếp theo mức độ ảnh hưởng mạnh nhất
+    data.sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact));
+
+    let html = `
+        <div class="shap-container">
+            <h3>🔍 Giải thích mô hình: ${modelName.toUpperCase()}</h3>
+            <p style="font-size:13px;color:#666;margin-bottom:15px;">
+                Thanh đỏ: ▲ tăng nguy cơ gian lận | Thanh xanh: ▼ giảm nguy cơ gian lận
+            </p>
+    `;
+
+    data.forEach(item => {
+        const impact = item.impact;
+        const percent = Math.min(Math.abs(impact) * 100, 100).toFixed(1);
+
+        const isIncrease = impact > 0;
+
+        const label = isIncrease
+            ? "🔺 Tăng nguy cơ gian lận"
+            : "🔻 Giảm nguy cơ gian lận";
+
+        const colorClass = isIncrease ? "positive" : "negative";
+
+        const featureName = featureMap[item.feature] || item.feature;
+
+        html += `
+            <div class="shap-row">
+                <div class="shap-feature">${featureName}</div>
+
+                <div class="shap-bar">
+                    <div class="shap-fill ${colorClass}"
+                         style="width:${percent}%">
+                    </div>
+                </div>
+
+                <div class="shap-value ${colorClass}">
+                    ${label}
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+
+    showPopup(html);
+}
+
+function showPopup(content) {
+    let popup = document.getElementById('popupExplain');
+
+    if (!popup) {
+        popup = document.createElement('div');
+        popup.id = 'popupExplain';
+        document.body.appendChild(popup);
+    }
+
+    popup.innerHTML = content + `
+        <div style="text-align:center;margin-top:20px;">
+            <button onclick="document.getElementById('popupExplain').remove()"
+                style="padding:10px 24px;border:none;background:var(--primary);color:white;border-radius:40px;cursor:pointer;font-weight:600;">
+                Đóng
+            </button>
+        </div>
+    `;
+}
+
 // Format currency inputs
 document.addEventListener('DOMContentLoaded', function () {
     const currencyInputs = ['income', 'claim_amount'];
@@ -209,16 +319,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
-
-// Add tooltips for better UX
-const tooltips = {
-    'age': 'Tuổi của người yêu cầu bảo hiểm',
-    'income': 'Thu nhập hàng tháng tính bằng VNĐ',
-    'claim_amount': 'Số tiền yêu cầu bồi thường',
-    'num_claims': 'Số lần đã yêu cầu bồi thường trước đây',
-    'policy_duration': 'Số tháng đã tham gia bảo hiểm',
-    'credit_score': 'Điểm tín dụng (300-850)'
-};
 
 // Add input validation
 document.addEventListener('DOMContentLoaded', function () {
@@ -240,3 +340,91 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
+
+// ===== HÀM MỚI: VALIDATION FORM =====
+function setupValidation() {
+    const fields = [
+        { id: 'age', min: 18, max: 80, errorId: 'ageError', message: 'Tuổi phải từ 18 đến 80' },
+        { id: 'income', min: 0, errorId: 'incomeError', message: 'Thu nhập phải lớn hơn 0' },
+        { id: 'claim_amount', min: 0, errorId: 'claimError', message: 'Số tiền bồi thường phải lớn hơn 0' },
+        { id: 'num_claims', min: 0, max: 20, errorId: 'claimsError', message: 'Số lần yêu cầu từ 0 đến 20' },
+        { id: 'policy_duration', min: 1, max: 120, errorId: 'durationError', message: 'Thời gian tham gia từ 1 đến 120 tháng' },
+        { id: 'num_dependents', min: 0, max: 10, errorId: 'dependentsError', message: 'Số người phụ thuộc từ 0 đến 10' },
+        { id: 'vehicle_age', min: 0, max: 30, errorId: 'vehicleError', message: 'Tuổi xe từ 0 đến 30 năm' },
+        { id: 'credit_score', min: 300, max: 850, errorId: 'creditError', message: 'Điểm tín dụng từ 300 đến 850' }
+    ];
+
+    fields.forEach(field => {
+        const input = document.getElementById(field.id);
+        if (input) {
+            input.addEventListener('input', () => validateField(field));
+            input.addEventListener('blur', () => validateField(field));
+        }
+    });
+}
+
+function validateField(field) {
+    const input = document.getElementById(field.id);
+    const errorSpan = document.getElementById(field.errorId);
+    const value = parseFloat(input.value);
+    const parent = input.closest('.form-group');
+
+    let isValid = true;
+    let errorMsg = '';
+
+    if (isNaN(value)) {
+        isValid = false;
+        errorMsg = 'Vui lòng nhập số hợp lệ';
+    } else if (field.min !== undefined && value < field.min) {
+        isValid = false;
+        errorMsg = field.message || `Giá trị phải >= ${field.min}`;
+    } else if (field.max !== undefined && value > field.max) {
+        isValid = false;
+        errorMsg = field.message || `Giá trị phải <= ${field.max}`;
+    }
+
+    if (!isValid) {
+        parent.classList.add('error');
+        if (errorSpan) errorSpan.textContent = errorMsg;
+    } else {
+        parent.classList.remove('error');
+        if (errorSpan) errorSpan.textContent = '';
+    }
+
+    return isValid;
+}
+
+function validateForm() {
+    const fields = [
+        { id: 'age', min: 18, max: 80 },
+        { id: 'income', min: 0 },
+        { id: 'claim_amount', min: 0 },
+        { id: 'num_claims', min: 0, max: 20 },
+        { id: 'policy_duration', min: 1, max: 120 },
+        { id: 'num_dependents', min: 0, max: 10 },
+        { id: 'vehicle_age', min: 0, max: 30 },
+        { id: 'credit_score', min: 300, max: 850 }
+    ];
+
+    let isValid = true;
+    fields.forEach(field => {
+        if (!validateField(field)) isValid = false;
+    });
+
+    // Kiểm tra các trường select không được để trống (mặc định đã có value)
+    const selects = ['education', 'employment_status', 'marital_status', 'claim_type'];
+    selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (select && !select.value) {
+            isValid = false;
+            select.style.borderColor = 'var(--danger)';
+            setTimeout(() => { select.style.borderColor = ''; }, 2000);
+        }
+    });
+
+    if (!isValid) {
+        alert('Vui lòng kiểm tra lại thông tin nhập vào!');
+    }
+
+    return isValid;
+}
